@@ -8,6 +8,7 @@ okta_baseurl = os.environ.get("OKTA_BASE_URL")
 okta_api_key = os.environ.get("OKTA_API_KEY")
 opensearch_host = os.environ.get("OPENSEARCH_HOST")
 aws_region = os.environ.get("AWS_REGION")
+index_name = os.environ.get("INDEX_NAME")
 
 
 def get_okta_logs(baseurl=None, api_key=None):
@@ -42,7 +43,6 @@ def main():
     )
 
     # Check that index exists
-    index_name = "okta-logs"
     if not client.indices.exists(index_name):
         # Create index if it doesn't exist
         client.indices.create(index=index_name)

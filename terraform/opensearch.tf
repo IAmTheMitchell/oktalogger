@@ -51,7 +51,7 @@ resource "aws_opensearch_domain" "siem_poc" {
     enabled                        = true
     internal_user_database_enabled = true
     master_user_options {
-      master_user_name     = "osadmin"
+      master_user_name     = var.admin_user
       master_user_password = var.admin_password
     }
   }
@@ -83,6 +83,12 @@ resource "aws_opensearch_domain_policy" "siem_poc_policy" {
 data "aws_region" "current" {}
 
 data "aws_caller_identity" "current" {}
+
+variable "admin_user" {
+  type        = string
+  description = "Master user name"
+  default     = "osadmin"
+}
 
 variable "admin_password" {
   type        = string
