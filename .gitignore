@@ -9,6 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
+# Misc
+vars.txt
+
 # Terraform -------------------------------------------------------
 # Compiled files
 *.tfstate
