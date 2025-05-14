@@ -1,12 +1,14 @@
 import os
+from urllib.parse import urlparse
 
-import boto3
 import requests
-from opensearchpy import AWSV4SignerAuth, OpenSearch
+from opensearchpy import OpenSearch
 
 okta_baseurl = os.environ.get("OKTA_BASE_URL")
 okta_api_key = os.environ.get("OKTA_API_KEY")
-opensearch_host = os.environ.get("OPENSEARCH_HOST")
+opensearch_host = urlparse(os.environ.get("OPENSEARCH_HOST")).hostname
+opensearch_username = os.environ.get("OPENSEARCH_USERNAME")
+opensearch_password = os.environ.get("OPENSEARCH_PASSWORD")
 aws_region = os.environ.get("AWS_REGION")
 index_name = os.environ.get("INDEX_NAME")
 
@@ -25,12 +27,9 @@ def get_okta_logs(baseurl=None, api_key=None):
 def main():
     # Get logs from Okta
     data = get_okta_logs(okta_baseurl, okta_api_key)
-    print(data)
 
     # Set up connection to OpenSearch
-    service = "es"
-    credentials = boto3.Session().get_credentials()
-    auth = AWSV4SignerAuth(credentials, aws_region, service)
+    auth = (opensearch_username, opensearch_password)
 
     client = OpenSearch(
         hosts=[{"host": opensearch_host, "port": 443}],
@@ -38,7 +37,7 @@ def main():
         http_compress=True,
         use_ssl=True,
         verify_certs=True,
-        ssl_assert_hostname=True,
+        ssl_assert_hostname=False,
         ssl_show_warn=False,
     )
 
@@ -50,7 +49,12 @@ def main():
 
     # Index the logs
     for log in data:
-        pass
+        # Index each log entry
+        response = client.index(index=index_name, body=log)
+        if response["result"] == "created":
+            print(f"Log indexed: {response['_id']}")
+        else:
+            print(f"Failed to index log: {log['uuid']}")
 
 
 if __name__ == "__main__":
