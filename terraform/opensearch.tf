@@ -1,7 +1,6 @@
-provider "aws" {
-  region = "us-east-1"
-}
+# Terraform configuration to create an OpenSearch domain with user/pass authentication and IP whitelisting.
 
+# Policies to control access to the OpenSearch domain.
 locals {
   access_policies = jsonencode({
     Version = "2012-10-17",
@@ -31,6 +30,7 @@ locals {
   })
 }
 
+# Create the OpenSearch domain with user/pass authentication and IP whitelisting
 resource "aws_opensearch_domain" "siem_poc" {
   domain_name    = "siem-poc"
   engine_version = "OpenSearch_2.19"
@@ -51,8 +51,8 @@ resource "aws_opensearch_domain" "siem_poc" {
     enabled                        = true
     internal_user_database_enabled = true
     master_user_options {
-      master_user_name     = var.admin_user
-      master_user_password = var.admin_password
+      master_user_name     = var.os_admin_user
+      master_user_password = var.os_admin_password
     }
   }
 
@@ -74,7 +74,7 @@ resource "aws_opensearch_domain" "siem_poc" {
   }
 }
 
-# Attach the access policy to the OpenSearch domain separately
+# Attach the access policy to the OpenSearch domain. Managing this separately can save large amounts of time when making updates.
 resource "aws_opensearch_domain_policy" "siem_poc_policy" {
   domain_name     = aws_opensearch_domain.siem_poc.domain_name
   access_policies = local.access_policies
@@ -84,19 +84,19 @@ data "aws_region" "current" {}
 
 data "aws_caller_identity" "current" {}
 
-variable "admin_user" {
+variable "os_admin_user" {
   type        = string
-  description = "Master user name"
+  description = "Master user name for OpenSearch"
   default     = "osadmin"
 }
 
-variable "admin_password" {
+variable "os_admin_password" {
   type        = string
-  description = "Master user password"
+  description = "Master user password for OpenSearch"
   sensitive   = true
 }
 
 variable "allowed_ip_cidr" {
   type        = string
-  description = "IP CIDR range to allow access. Static/VPN IP recommended."
+  description = "IP CIDR range to allow access to OpenSearch. Static/VPN IP recommended."
 }

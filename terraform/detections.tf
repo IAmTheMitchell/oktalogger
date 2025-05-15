@@ -1,20 +1,4 @@
-terraform {
-  required_providers {
-    opensearch = {
-      source = "opensearch-project/opensearch"
-      version = "2.3.1"
-    }
-  }
-}
-
-provider "opensearch" {
-  url = "https://${aws_opensearch_domain.siem_poc.endpoint}"
-  healthcheck = false
-  username = var.admin_user
-  password = var.admin_password
-  version_ping_timeout = 120
-  sign_aws_requests = false  # Necessary when using username/password
-}
+# Configures OpenSearch index and security detections.
 
 # Set up OpenSearch index
 resource "opensearch_index" "log_index" {
