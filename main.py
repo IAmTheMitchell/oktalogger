@@ -1,3 +1,4 @@
+import logging
 import os
 from urllib.parse import urlparse
 
@@ -12,8 +13,23 @@ opensearch_password = os.environ.get("OPENSEARCH_PASSWORD")
 aws_region = os.environ.get("AWS_REGION")
 index_name = os.environ.get("INDEX_NAME")
 
+# Determine if running in AWS Lambda
+is_lambda = os.environ.get("AWS_EXECUTION_ENV") is not None
+
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG if not is_lambda else logging.INFO)
+
+# If running locally, log to the console
+if not is_lambda:
+    console_handler = logging.StreamHandler()
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
 
 def get_okta_logs(baseurl=None, api_key=None):
+    """Retrieve audit logs from Okta"""
     okta_endpoint = baseurl + "/api/v1/logs"
 
     headers = {"Authorization": f"SSWS {api_key}"}
@@ -27,11 +43,12 @@ def get_okta_logs(baseurl=None, api_key=None):
 def main():
     # Get logs from Okta
     data = get_okta_logs(okta_baseurl, okta_api_key)
+    logger.info(f"Retrieved {len(data)} logs from Okta")
 
     # Set up connection to OpenSearch
     auth = (opensearch_username, opensearch_password)
 
-    client = OpenSearch(
+    os_client = OpenSearch(
         hosts=[{"host": opensearch_host, "port": 443}],
         http_auth=auth,
         http_compress=True,
@@ -42,19 +59,23 @@ def main():
     )
 
     # Check that index exists
-    if not client.indices.exists(index_name):
+    if not os_client.indices.exists(index_name):
         # Create index if it doesn't exist
-        client.indices.create(index=index_name)
-        print(f"Index {index_name} created.")
+        os_client.indices.create(index=index_name)
+        logger.warning(f"Index {index_name} created")
 
     # Index the logs
+    # Limit the number of logs to 10 for this example
+    data = data[:10]  # TODO: Remove this line to index all logs
     for log in data:
         # Index each log entry
-        response = client.index(index=index_name, body=log)
+        response = os_client.index(index=index_name, body=log)
         if response["result"] == "created":
-            print(f"Log indexed: {response['_id']}")
+            logger.info(f"Log indexed: {response['_id']}")
         else:
-            print(f"Failed to index log: {log['uuid']}")
+            logger.error(f"Failed to index log: {log['uuid']}")
+
+    logger.info(f"Indexed {len(data)} logs into OpenSearch index {index_name}")
 
 
 if __name__ == "__main__":
