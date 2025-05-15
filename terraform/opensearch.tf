@@ -1,35 +1,5 @@
 # Terraform configuration to create an OpenSearch domain with user/pass authentication and IP whitelisting.
 
-# Policies to control access to the OpenSearch domain.
-locals {
-  access_policies = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-
-      # Allow lambda to write to OpenSearch
-      # {
-      #   Sid       = "AllowLambdaIngest"
-      #   Effect    = "Allow"
-      #   Principal = { AWS = aws_iam_role.lambda_ingest.arn }
-      #   Action    = "es:ESHttp*"  # TODO: Restrict to specific actions
-      #   Resource  = "arn:aws:es:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:domain/${aws_opensearch_domain.logs.domain_name}/*"
-      # },
-
-      # Allow master user to login from approved IP
-      {
-        Sid       = "AllowMasterUserFromIP"
-        Effect    = "Allow"
-        Principal = { AWS = "*" }
-        Action    = "es:ESHttp*"
-        Resource  = "arn:aws:es:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:domain/${aws_opensearch_domain.siem_poc.domain_name}/*"
-        Condition = {
-          IpAddress = { "aws:SourceIp" = [var.allowed_ip_cidr] }
-        }
-      }
-    ]
-  })
-}
-
 # Create the OpenSearch domain with user/pass authentication and IP whitelisting
 resource "aws_opensearch_domain" "siem_poc" {
   domain_name    = "siem-poc"
@@ -74,10 +44,40 @@ resource "aws_opensearch_domain" "siem_poc" {
   }
 }
 
+# Policies to control access to the OpenSearch domain.
+data "aws_iam_policy_document" "opensearch_access" {
+  statement {
+    sid       = "AllowLambdaIngest"
+    effect    = "Allow"
+    actions   = ["es:ESHttp*"]
+    principals {
+      type        = "AWS"
+      identifiers = [aws_iam_role.lambda_ingest.arn]
+    }
+    resources = ["arn:aws:es:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:domain/${aws_opensearch_domain.siem_poc.domain_name}/*"]
+  }
+
+  statement {
+    sid       = "AllowMasterUserFromIP"
+    effect    = "Allow"
+    actions   = ["es:ESHttp*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["*"]
+    }
+    resources = ["arn:aws:es:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:domain/${aws_opensearch_domain.siem_poc.domain_name}/*"]
+    condition {
+      test     = "IpAddress"
+      variable = "aws:SourceIp"
+      values   = [var.allowed_ip_cidr]
+    }
+  }
+}
+
 # Attach the access policy to the OpenSearch domain. Managing this separately can save large amounts of time when making updates.
 resource "aws_opensearch_domain_policy" "siem_poc_policy" {
   domain_name     = aws_opensearch_domain.siem_poc.domain_name
-  access_policies = local.access_policies
+  access_policies = data.aws_iam_policy_document.opensearch_access.json
 
   depends_on = [ aws_opensearch_domain.siem_poc ]
 }
