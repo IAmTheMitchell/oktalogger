@@ -9,7 +9,7 @@ The goal of this project is to poll Okta for audit logs and send them to a SIEM.
 
 3. Run `terraform plan` to see the resources that will be created in AWS. Enter the variable values as prompted. (See [Hashicorp docs](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/aws-build) for connecting your local environment to AWS if necessary.)
 
-4. If everything looks good, run `terraform apply`. Deployment may take 20+ minutes. 
+4. If everything looks good, run `terraform apply`. Deployment may take 20+ minutes. (Note: If deployment fails with 403 HTTP forbidden error for OpenSearch resource creation, check that OpenSearch is fully deployed in the AWS console, then run Terraform again.)
 
 5. Check the AWS console. Navigate to the OpenSearch service. Clicking the link under OpenSearch Dashboards URL (IPv4) will take you to the OpenSearch console. Log in with the master credentials. (Default user is osadmin + the password you set.) If you have auth issues, make sure you are accessing the console from the IP you set in Terraform.
 

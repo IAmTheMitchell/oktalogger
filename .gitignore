@@ -29,3 +29,4 @@ vars.txt
 
 # Backup files
 *.bak
+*.backup

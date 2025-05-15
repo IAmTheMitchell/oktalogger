@@ -3,6 +3,12 @@
 # Set up OpenSearch index
 resource "opensearch_index" "log_index" {
   name               = var.index_name
+
+  depends_on = [ aws_opensearch_domain.siem_poc ]
+
+  lifecycle {
+    ignore_changes = [ mappings ]
+  }
 }
 
 variable "index_name" {

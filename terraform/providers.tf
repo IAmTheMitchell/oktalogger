@@ -12,7 +12,7 @@ terraform {
 provider "opensearch" {
   url = "https://${aws_opensearch_domain.siem_poc.endpoint}"
   healthcheck = false
-  username = var.os_admin_user
+  username = var.os_admin_username
   password = var.os_admin_password
   version_ping_timeout = 120
   sign_aws_requests = false  # Necessary when using username/password

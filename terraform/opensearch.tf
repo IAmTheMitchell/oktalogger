@@ -51,7 +51,7 @@ resource "aws_opensearch_domain" "siem_poc" {
     enabled                        = true
     internal_user_database_enabled = true
     master_user_options {
-      master_user_name     = var.os_admin_user
+      master_user_name     = var.os_admin_username
       master_user_password = var.os_admin_password
     }
   }
@@ -78,25 +78,10 @@ resource "aws_opensearch_domain" "siem_poc" {
 resource "aws_opensearch_domain_policy" "siem_poc_policy" {
   domain_name     = aws_opensearch_domain.siem_poc.domain_name
   access_policies = local.access_policies
+
+  depends_on = [ aws_opensearch_domain.siem_poc ]
 }
 
 data "aws_region" "current" {}
 
 data "aws_caller_identity" "current" {}
-
-variable "os_admin_user" {
-  type        = string
-  description = "Master user name for OpenSearch"
-  default     = "osadmin"
-}
-
-variable "os_admin_password" {
-  type        = string
-  description = "Master user password for OpenSearch"
-  sensitive   = true
-}
-
-variable "allowed_ip_cidr" {
-  type        = string
-  description = "IP CIDR range to allow access to OpenSearch. Static/VPN IP recommended."
-}
