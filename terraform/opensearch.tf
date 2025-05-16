@@ -7,8 +7,8 @@ resource "aws_opensearch_domain" "siem_poc" {
 
   cluster_config {
     instance_type          = "t3.small.search"
-    instance_count         = 1
-    zone_awareness_enabled = false
+    instance_count         = 2
+    zone_awareness_enabled = true
   }
 
   ebs_options {
@@ -45,7 +45,7 @@ data "aws_iam_policy_document" "opensearch_access" {
   statement {
     sid     = "AllowLambdaIngest"
     effect  = "Allow"
-    actions = ["es:ESHttp*"]
+    actions = ["es:*"]
     principals {
       type        = "AWS"
       identifiers = [aws_iam_role.lambda_ingest.arn]
@@ -76,6 +76,38 @@ resource "aws_opensearch_domain_policy" "siem_poc_policy" {
   access_policies = data.aws_iam_policy_document.opensearch_access.json
 
   depends_on = [aws_opensearch_domain.siem_poc]
+}
+
+# OS role for the Lambda writer
+resource "opensearch_role" "lambda_writer" {
+  # This name lives only inside the cluster
+  role_name   = "lambda_writer"
+  description = "Write Okta audit logs from Lambda"
+
+  cluster_permissions = [
+    "cluster_composite_ops",
+  ]
+
+  index_permissions {
+    index_patterns  = [var.index_name]
+    allowed_actions = [
+      "crud",
+    ]
+  }
+
+  depends_on = [aws_opensearch_domain.siem_poc]
+}
+
+# Map the Lambda’s IAM role to the OS security role
+resource "opensearch_roles_mapping" "lambda_writer" {
+  role_name     = opensearch_role.lambda_writer.role_name
+  description   = "Give lambda_ingest_role the lambda_writer privileges"
+
+  backend_roles = [
+    aws_iam_role.lambda_ingest.arn
+  ]
+
+  depends_on = [opensearch_role.lambda_writer]
 }
 
 data "aws_region" "current" {}

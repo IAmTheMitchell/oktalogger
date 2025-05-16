@@ -15,6 +15,7 @@ dist/
 
 # Misc
 vars.txt
+*output.xml
 
 # Terraform -------------------------------------------------------
 # Compiled files

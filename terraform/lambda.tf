@@ -2,7 +2,7 @@
 
 locals {
   build_dir = "${path.module}/../build"
-  dist_dir = "${path.module}/../dist"
+  dist_dir  = "${path.module}/../dist"
 }
 
 # Download Python dependencies and copy to build directory
@@ -63,9 +63,7 @@ resource "aws_iam_role_policy" "lambda_ingest_policy" {
         Effect = "Allow"
         Action = [
           "secretsmanager:GetSecretValue",
-          "es:ESHttpPost",
-          "es:ESHttpPut",
-          "es:ESHttpGet"
+          "es:ESHttp*"
         ]
         Resource = "*"
       }
@@ -90,6 +88,9 @@ resource "aws_lambda_function" "lambda_payload_dir" {
   role             = aws_iam_role.lambda_ingest.arn
   handler          = "main.lambda_handler"
   runtime          = "python3.13"
+  timeout          = 300
+  layers           = ["arn:aws:lambda:us-east-1:177933569100:layer:AWS-Parameters-and-Secrets-Lambda-Extension:17"]
+  # Environment variables for the Lambda function
   environment {
     variables = {
       OKTA_HOST       = var.okta_host

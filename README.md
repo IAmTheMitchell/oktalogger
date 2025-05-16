@@ -1,4 +1,4 @@
-# Coding Challenge 2
+# Okta Logger
 
 The goal of this project is to poll Okta for audit logs and send them to a SIEM. The project contains Python code for a Lambda function to facilitate forwarding the logs and Terraform code to automate the infrastructure setup. 
 
@@ -13,6 +13,17 @@ The goal of this project is to poll Okta for audit logs and send them to a SIEM.
 
 5. Check the AWS console. Navigate to the OpenSearch service. Clicking the link under OpenSearch Dashboards URL (IPv4) will take you to the OpenSearch console. Log in with the master credentials. (Default user is osadmin + the password you set.) If you have auth issues, make sure you are accessing the console from the IP you set in Terraform.
 
+## Design
+
+### AWS Parameters and Secrets Lambda Extension
+The AWS Parameters and Secrets Lambda Extension was used instead of the typical boto3 client method because it supports caching. This allows for faster retrieval and lower costs by reducing the amount of calls to AWS Secrets Manager.
+
+[Official AWS Documentation](https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieving-secrets_lambda.html)
+
+## Common Issues
+
+### OpenSearch Failures
+Running OpenSearch with minimal resources can lead to strange issues. Be sure to follow best practices and recommendations when provisioning an OpenSearch cluster for production. `opensearch.tf` can be modified to change cluster attributes.
 
 ## Future Enhancements
 

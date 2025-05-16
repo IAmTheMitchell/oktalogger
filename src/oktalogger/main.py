@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from urllib.parse import urlparse
@@ -7,21 +8,21 @@ import requests
 from opensearchpy import AWSV4SignerAuth, OpenSearch, RequestsHttpConnection
 
 OKTA_HOST = os.environ.get("OKTA_HOST")
-OPENSEARCH_HOST = urlparse(os.environ.get("OPENSEARCH_HOST")).hostname
+OPENSEARCH_HOST = os.environ.get("OPENSEARCH_HOST")
 OS_REGION = os.environ.get("OS_REGION")
 INDEX_NAME = os.environ.get("INDEX_NAME")
 
 # Determine if running in AWS Lambda
-is_lambda = os.environ.get("AWS_EXECUTION_ENV") is not None
+IS_LAMBDA = os.environ.get("AWS_EXECUTION_ENV") is not None
 
 # Set up logging
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG if not is_lambda else logging.INFO)
+logger.setLevel(logging.DEBUG if not IS_LAMBDA else logging.INFO)
 logger.info("Starting Okta Logger")
-logger.info(f"Running in {'AWS Lambda' if is_lambda else 'local environment'}")
+logger.info(f"Running in {'AWS Lambda' if IS_LAMBDA else 'local environment'}")
 
 # If running locally
-if not is_lambda:
+if not IS_LAMBDA:
     # Log to the console
     console_handler = logging.StreamHandler()
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
@@ -32,7 +33,33 @@ if not is_lambda:
     OPENSEARCH_USERNAME = os.environ.get("OPENSEARCH_USERNAME")
     OPENSEARCH_PASSWORD = os.environ.get("OPENSEARCH_PASSWORD")
     OKTA_API_TOKEN = os.environ.get("OKTA_API_TOKEN")
-    OKTA_API_TOKEN = None
+
+
+def get_aws_secret(secret_name):
+    """Retrieve a secret from AWS Secrets Manager using Lambda Extension."""
+
+    # Get the secrets extension HTTP port from environment variable
+    secrets_extension_http_port = os.environ.get(
+        "AWS_SECRETS_EXTENSION_HTTP_PORT", "2773"
+    )
+
+    # Set up headers for the request
+    headers = {"X-Aws-Parameters-Secrets-Token": os.environ.get("AWS_SESSION_TOKEN")}
+
+    secrets_extension_endpoint = (
+        "http://localhost:"
+        + secrets_extension_http_port
+        + "/secretsmanager/get?secretId="
+        + secret_name
+    )
+
+    r = requests.get(secrets_extension_endpoint, headers=headers)
+
+    secret = json.loads(r.text)[
+        "SecretString"
+    ]  # load the Secrets Manager response into a Python dictionary, access the secret
+
+    return secret
 
 
 def get_okta_logs(baseurl=None, api_key=None):
@@ -48,9 +75,20 @@ def get_okta_logs(baseurl=None, api_key=None):
 
 
 def main():
+    """Main function to retrieve Okta logs and index them into OpenSearch"""
+    # If running in AWS Lambda, get secrets from AWS Secrets Manager
+    if IS_LAMBDA:
+        logger.info(
+            "Running in AWS Lambda, retrieving secrets from AWS Secrets Manager"
+        )
+        okta_api_token = get_aws_secret("okta_api_token")
+    else:
+        okta_api_token = OKTA_API_TOKEN
+
     # Get logs from Okta
-    data = get_okta_logs(OKTA_HOST, OKTA_API_TOKEN)
-    # Check for errors
+    data = get_okta_logs(OKTA_HOST, okta_api_token)
+
+    # Check for errors in Okta response
     if isinstance(data, dict) and "errorCode" in data:
         logger.error(f"Error retrieving logs from Okta: {data['errorSummary']}")
         return
@@ -60,7 +98,18 @@ def main():
     logger.info(f"Retrieved {len(data)} logs from Okta")
 
     # Set up connection to OpenSearch. Varies based on environment.
-    if is_lambda:
+    logger.info("Setting up connection to OpenSearch host: %s", OPENSEARCH_HOST)
+
+    # Validate OpenSearch host
+    if not OPENSEARCH_HOST:
+        logger.error("OpenSearch host is not set. Exiting.")
+        return
+    opensearch_host = OPENSEARCH_HOST
+    if not OPENSEARCH_HOST.startswith(("http://", "https://")):
+        opensearch_host = "https://" + OPENSEARCH_HOST
+    opensearch_host = urlparse(opensearch_host).hostname
+
+    if IS_LAMBDA:
         service = "es"
         credentials = boto3.Session().get_credentials()
         auth = AWSV4SignerAuth(credentials, OS_REGION, service)
@@ -85,12 +134,6 @@ def main():
             ssl_assert_hostname=False,
             ssl_show_warn=False,
         )
-
-    # Check that index exists
-    if not os_client.indices.exists(INDEX_NAME):
-        # Create index if it doesn't exist
-        os_client.indices.create(index=INDEX_NAME)
-        logger.warning(f"Index {INDEX_NAME} created")
 
     # Index the logs
     # Limit the number of logs to 10 for this example
