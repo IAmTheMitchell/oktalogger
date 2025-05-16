@@ -62,16 +62,55 @@ def get_aws_secret(secret_name):
     return secret
 
 
-def get_okta_logs(baseurl=None, api_key=None):
+def validate_opensearch_host(host):
+    """Validate the OpenSearch host URL"""
+    if not host:
+        logger.error("OpenSearch host is not set. Exiting.")
+        raise ValueError("OpenSearch host is not set.")
+    validated_host = host
+    if not host.startswith(("http://", "https://")):
+        validated_host = "https://" + host
+    validated_host = urlparse(validated_host).hostname
+
+    return validated_host
+
+
+def get_last_run(opensearch_client):
+    """Retrieve time of last indexed log in OpenSearch"""
+    results = opensearch_client.search(
+        index=INDEX_NAME, body={"size": 1, "sort": [{"published": {"order": "desc"}}]}
+    )
+    hits = results["hits"]["hits"]
+    return hits[0]["_source"]["published"] if hits else "1970-01-01T00:00:00Z"
+
+
+def get_okta_logs(baseurl, api_key, start_time):
     """Retrieve audit logs from Okta"""
     okta_endpoint = baseurl + "/api/v1/logs"
-
     headers = {"Authorization": f"SSWS {api_key}"}
-
-    response = requests.get(okta_endpoint, headers=headers)
+    params = {
+        "since": start_time,
+    }
+    response = requests.get(okta_endpoint, headers=headers, params=params)
 
     data = response.json()
+
+    # Check for errors in Okta response
+    if isinstance(data, dict) and "errorCode" in data:
+        raise Exception(f"Error retrieving logs from Okta: {data['errorSummary']}")
+
+    logger.info(f"Retrieved {len(data)} logs from Okta")
     return data
+
+
+def index_logs(os_client, data):
+    for log in data:
+        # Index each log entry
+        response = os_client.index(index=INDEX_NAME, body=log)
+        if response["result"] == "created":
+            logger.info(f"Log indexed: {response['_id']}")
+        else:
+            logger.error(f"Failed to index log: {log['uuid']}")
 
 
 def main():
@@ -85,29 +124,11 @@ def main():
     else:
         okta_api_token = OKTA_API_TOKEN
 
-    # Get logs from Okta
-    data = get_okta_logs(OKTA_HOST, okta_api_token)
-
-    # Check for errors in Okta response
-    if isinstance(data, dict) and "errorCode" in data:
-        logger.error(f"Error retrieving logs from Okta: {data['errorSummary']}")
-        return
-    if len(data) == 0:
-        logger.warning("No new logs retrieved from Okta. Stopping execution.")
-        return
-    logger.info(f"Retrieved {len(data)} logs from Okta")
-
     # Set up connection to OpenSearch. Varies based on environment.
     logger.info("Setting up connection to OpenSearch host: %s", OPENSEARCH_HOST)
 
     # Validate OpenSearch host
-    if not OPENSEARCH_HOST:
-        logger.error("OpenSearch host is not set. Exiting.")
-        return
-    opensearch_host = OPENSEARCH_HOST
-    if not OPENSEARCH_HOST.startswith(("http://", "https://")):
-        opensearch_host = "https://" + OPENSEARCH_HOST
-    opensearch_host = urlparse(opensearch_host).hostname
+    opensearch_host = validate_opensearch_host(OPENSEARCH_HOST)
 
     if IS_LAMBDA:
         service = "es"
@@ -115,7 +136,7 @@ def main():
         auth = AWSV4SignerAuth(credentials, OS_REGION, service)
 
         os_client = OpenSearch(
-            hosts=[{"host": OPENSEARCH_HOST, "port": 443}],
+            hosts=[{"host": opensearch_host, "port": 443}],
             http_auth=auth,
             use_ssl=True,
             verify_certs=True,
@@ -126,7 +147,7 @@ def main():
         auth = (OPENSEARCH_USERNAME, OPENSEARCH_PASSWORD)
 
         os_client = OpenSearch(
-            hosts=[{"host": OPENSEARCH_HOST, "port": 443}],
+            hosts=[{"host": opensearch_host, "port": 443}],
             http_auth=auth,
             http_compress=True,
             use_ssl=True,
@@ -135,16 +156,20 @@ def main():
             ssl_show_warn=False,
         )
 
+    # Get the last indexed log time
+    last_run = get_last_run(os_client)
+    logger.info(f"Last indexed log time: {last_run}")
+
+    # Get logs from Okta
+    data = get_okta_logs(OKTA_HOST, okta_api_token, last_run)
+
+    # Check if there are any logs to index
+    if len(data) == 0:
+        logger.warning("No new logs retrieved from Okta. Stopping execution.")
+        return
+
     # Index the logs
-    # Limit the number of logs to 10 for this example
-    data = data[:10]  # TODO: Remove this line to index all logs
-    for log in data:
-        # Index each log entry
-        response = os_client.index(index=INDEX_NAME, body=log)
-        if response["result"] == "created":
-            logger.info(f"Log indexed: {response['_id']}")
-        else:
-            logger.error(f"Failed to index log: {log['uuid']}")
+    index_logs(os_client, data)
 
     logger.info(f"Indexed {len(data)} logs into OpenSearch index {INDEX_NAME}")
 
