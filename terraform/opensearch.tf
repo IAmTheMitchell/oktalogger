@@ -38,18 +38,14 @@ resource "aws_opensearch_domain" "siem_poc" {
     enforce_https       = true
     tls_security_policy = "Policy-Min-TLS-1-2-2019-07"
   }
-
-  tags = {
-    Environment = "rchallenge2"
-  }
 }
 
 # Policies to control access to the OpenSearch domain.
 data "aws_iam_policy_document" "opensearch_access" {
   statement {
-    sid       = "AllowLambdaIngest"
-    effect    = "Allow"
-    actions   = ["es:ESHttp*"]
+    sid     = "AllowLambdaIngest"
+    effect  = "Allow"
+    actions = ["es:ESHttp*"]
     principals {
       type        = "AWS"
       identifiers = [aws_iam_role.lambda_ingest.arn]
@@ -58,9 +54,9 @@ data "aws_iam_policy_document" "opensearch_access" {
   }
 
   statement {
-    sid       = "AllowMasterUserFromIP"
-    effect    = "Allow"
-    actions   = ["es:ESHttp*"]
+    sid     = "AllowMasterUserFromIP"
+    effect  = "Allow"
+    actions = ["es:ESHttp*"]
     principals {
       type        = "AWS"
       identifiers = ["*"]
@@ -79,7 +75,7 @@ resource "aws_opensearch_domain_policy" "siem_poc_policy" {
   domain_name     = aws_opensearch_domain.siem_poc.domain_name
   access_policies = data.aws_iam_policy_document.opensearch_access.json
 
-  depends_on = [ aws_opensearch_domain.siem_poc ]
+  depends_on = [aws_opensearch_domain.siem_poc]
 }
 
 data "aws_region" "current" {}

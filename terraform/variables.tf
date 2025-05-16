@@ -1,5 +1,10 @@
 # Variables for configuring Lambda, Okta, and OpenSearch.
 
+variable "okta_host" {
+  type        = string
+  description = "Okta domain (e.g., https://dev-123456.okta.com)"
+}
+
 variable "okta_api_token" {
   type        = string
   description = "API token for Okta"
@@ -21,4 +26,10 @@ variable "os_admin_password" {
 variable "allowed_ip_cidr" {
   type        = string
   description = "IP CIDR range to allow access to OpenSearch. Static/VPN IP recommended."
+}
+
+variable "lambda_src_dir" {
+  type        = string
+  description = "Directory containing the Lambda function source code"
+  default     = "../src/oktalogger"
 }

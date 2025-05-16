@@ -9,6 +9,10 @@ wheels/
 # Virtual environments
 .venv
 
+# Build artifacts
+build/
+dist/
+
 # Misc
 vars.txt
 
