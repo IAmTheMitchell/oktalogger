@@ -33,3 +33,9 @@ variable "lambda_src_dir" {
   description = "Directory containing the Lambda function source code"
   default     = "../src/oktalogger"
 }
+
+variable "okta_polling_interval" {
+  type        = string
+  description = "Polling interval for Okta audit logs (e.g., '5 minutes')"
+  default     = "2 minutes"
+}

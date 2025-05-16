@@ -52,3 +52,6 @@ It would be better to send the logs to OpenSearch in bulk. Theoretically this is
 ```
 
 However, OpenSearch returns a 400 error. Apparently the bulk operation does not support nested objects. 
+
+### Page Through Okta Logs
+By default, Okta returns 100 logs per single API call. If there are more than 100 logs per poll, data will be missed. The code should be updated to page through events until all logs in a polling period are recorded. 
