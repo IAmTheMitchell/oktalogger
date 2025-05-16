@@ -5,7 +5,13 @@ from urllib.parse import urlparse
 
 import boto3
 import requests
-from opensearchpy import AWSV4SignerAuth, OpenSearch, RequestsHttpConnection
+from opensearchpy import (
+    AWSV4SignerAuth,
+    OpenSearch,
+    RequestError,
+    RequestsHttpConnection,
+)
+from opensearchpy.exceptions import ConnectionTimeout, TransportError
 
 OKTA_HOST = os.environ.get("OKTA_HOST")
 OPENSEARCH_HOST = os.environ.get("OPENSEARCH_HOST")
@@ -77,9 +83,16 @@ def validate_opensearch_host(host):
 
 def get_last_run(opensearch_client):
     """Retrieve time of last indexed log in OpenSearch"""
-    results = opensearch_client.search(
-        index=INDEX_NAME, body={"size": 1, "sort": [{"published": {"order": "desc"}}]}
-    )
+    try:
+        results = opensearch_client.search(
+            index=INDEX_NAME,
+            body={"size": 1, "sort": [{"published": {"order": "desc"}}]},
+        )
+    except RequestError:
+        logger.error(
+            "Index does not exist or is not accessible. Returning default date."
+        )
+        return "1970-01-01T00:00:00Z"
     hits = results["hits"]["hits"]
     return hits[0]["_source"]["published"] if hits else "1970-01-01T00:00:00Z"
 
@@ -104,13 +117,37 @@ def get_okta_logs(baseurl, api_key, start_time):
 
 
 def index_logs(os_client, data):
+    """Index logs into OpenSearch"""
+    success_count = 0
+
     for log in data:
-        # Index each log entry
-        response = os_client.index(index=INDEX_NAME, body=log)
-        if response["result"] == "created":
-            logger.info(f"Log indexed: {response['_id']}")
-        else:
-            logger.error(f"Failed to index log: {log['uuid']}")
+        try:
+            os_client.index(
+                index=INDEX_NAME,
+                id=log["uuid"],
+                body=log,
+                op_type="create",
+            )
+            logger.info(f"Log indexed: {log['uuid']}")
+            success_count += 1
+        except ConnectionTimeout as e:
+            logger.warning(f"Timeout indexing log {log['uuid']}: {e}")
+        except TransportError as e:
+            error_info = getattr(e, "error", None)
+            # Handle version conflicts as duplicates
+            if isinstance(error_info, str) and "version_conflict" in error_info:
+                logger.debug(f"Duplicate log {log['uuid']} skipped.")
+                success_count += 1  # Count as success for duplicates
+            else:
+                logger.error(f"Failed to index log {log['uuid']}: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error indexing log {log['uuid']}: {e}")
+
+    # Log the summary of indexing results
+    failure_count = len(data) - success_count
+    logger.info(
+        f"Indexing complete: {success_count} logs indexed successfully, {failure_count} failed"
+    )
 
 
 def main():
@@ -142,6 +179,9 @@ def main():
             verify_certs=True,
             connection_class=RequestsHttpConnection,
             pool_maxsize=20,
+            timeout=30,
+            max_retries=3,
+            retry_on_timeout=True,
         )
     else:
         auth = (OPENSEARCH_USERNAME, OPENSEARCH_PASSWORD)
@@ -154,6 +194,9 @@ def main():
             verify_certs=True,
             ssl_assert_hostname=False,
             ssl_show_warn=False,
+            timeout=30,
+            max_retries=3,
+            retry_on_timeout=True,
         )
 
     # Get the last indexed log time
@@ -171,7 +214,7 @@ def main():
     # Index the logs
     index_logs(os_client, data)
 
-    logger.info(f"Indexed {len(data)} logs into OpenSearch index {INDEX_NAME}")
+    logger.info(f"Finished processing {len(data)} logs")
 
 
 def lambda_handler(event, context):
