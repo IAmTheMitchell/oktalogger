@@ -7,10 +7,7 @@ import requests
 from opensearchpy import AWSV4SignerAuth, OpenSearch, RequestsHttpConnection
 
 OKTA_HOST = os.environ.get("OKTA_HOST")
-OKTA_API_TOKEN = os.environ.get("OKTA_API_TOKEN")
 OPENSEARCH_HOST = urlparse(os.environ.get("OPENSEARCH_HOST")).hostname
-OPENSEARCH_USERNAME = os.environ.get("OPENSEARCH_USERNAME")
-OPENSEARCH_PASSWORD = os.environ.get("OPENSEARCH_PASSWORD")
 OS_REGION = os.environ.get("OS_REGION")
 INDEX_NAME = os.environ.get("INDEX_NAME")
 
@@ -20,13 +17,22 @@ is_lambda = os.environ.get("AWS_EXECUTION_ENV") is not None
 # Set up logging
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG if not is_lambda else logging.INFO)
+logger.info("Starting Okta Logger")
+logger.info(f"Running in {'AWS Lambda' if is_lambda else 'local environment'}")
 
-# If running locally, log to the console
+# If running locally
 if not is_lambda:
+    # Log to the console
     console_handler = logging.StreamHandler()
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
+
+    # Get credentials from environment variables
+    OPENSEARCH_USERNAME = os.environ.get("OPENSEARCH_USERNAME")
+    OPENSEARCH_PASSWORD = os.environ.get("OPENSEARCH_PASSWORD")
+    OKTA_API_TOKEN = os.environ.get("OKTA_API_TOKEN")
+    OKTA_API_TOKEN = None
 
 
 def get_okta_logs(baseurl=None, api_key=None):
@@ -44,6 +50,10 @@ def get_okta_logs(baseurl=None, api_key=None):
 def main():
     # Get logs from Okta
     data = get_okta_logs(OKTA_HOST, OKTA_API_TOKEN)
+    # Check for errors
+    if isinstance(data, dict) and "errorCode" in data:
+        logger.error(f"Error retrieving logs from Okta: {data['errorSummary']}")
+        return
     if len(data) == 0:
         logger.warning("No new logs retrieved from Okta. Stopping execution.")
         return
