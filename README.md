@@ -55,7 +55,7 @@ The Lambda function begins by retrieving the Okta API token from AWS Secrets Man
 Terraform is used to manage all services and infrastructure for this project. This allows for automated deployment, drift correction, and tear-down.
 
 #### AWS Lambda
-Lambda provides compute to run the Python script that polls and indexes the Okta logs. Thanks to the serverless architecture of Lambda, maintenance is minimal and no specific infrastuture has to be provisioned. AWS handles infrastructure scaling, maintenance, and updates. 
+Lambda provides compute to run the Python script that polls and indexes the Okta logs. Thanks to the serverless architecture of Lambda, maintenance is minimal and no specific infrastucture has to be provisioned. AWS handles infrastructure scaling, maintenance, and updates. 
 
 #### AWS Secrets Manager
 Secrets, such as the OpenSearch credentials and Okta API token, are stored in the AWS Secrets Manager. Credentials can be rotated and updated with Terraform, and the Lambda function will automatically retrieve the latest credentials.
@@ -88,6 +88,10 @@ export OPENSEARCH_PASSWORD=your_value_here
 ### OpenSearch Failures
 Running OpenSearch with minimal resources can lead to strange issues. Be sure to follow best practices and recommendations when provisioning an OpenSearch cluster for production. `opensearch.tf` can be modified to change cluster attributes.
 
+If OpenSearch becomes unresponsive (unfortunately common when under-provisioned), Terraform may fail with errors due to being unable to update the state of internal OpenSearch resources. The solution is to either fix OpenSearch manually, remove the state of the broken Terraform resources manually (`terraform state rm resource_here`), or destroy all infrastructure with `terraform destroy -refresh=false`.
+
+Again, if using OpenSearch for more than a proof of concept, be sure to follow best practices when provisioning. 
+
 ## Future Enhancements
 
 ### Migrate from User/Pass Auth
@@ -118,7 +122,7 @@ However, OpenSearch returns a 400 error because the bulk operation does not supp
 
 ### Page Through Okta Logs
 
-By default, Okta returns 100 logs per single API call. If there are more than 100 logs to be processed, it will take multiple function invocations to collect all the logs. A better solution would be to page through all the available logs and process in a single invocation. 
+By default, Okta returns a maximum of 100 logs per API call. If there are more than 100 logs to be processed, it will take multiple function invocations to collect all the logs. A better solution would be to page through all the available logs and process in a single invocation. 
 
 ### Fix Unnecessary Terraform Refresh of Detections
 
