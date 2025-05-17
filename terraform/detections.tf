@@ -6,6 +6,17 @@ resource "opensearch_index" "log_index" {
 
   depends_on = [aws_opensearch_domain.siem_poc]
 
+  # Wait for the OpenSearch domain to become available
+  provisioner "local-exec" {
+    command = <<EOT
+      echo "Waiting for OpenSearch domain to become available..."
+      for i in {1..10}; do
+        curl -s -o /dev/null -w "%%{http_code}" -u "${var.os_admin_username}:${var.os_admin_password}" "https://${aws_opensearch_domain.siem_poc.endpoint}/_cluster/health" | grep -q "200" && break
+        sleep 10
+      done
+    EOT
+  }
+
   lifecycle {
     ignore_changes = [mappings]
   }
@@ -78,7 +89,7 @@ resource "opensearch_monitor" "okta_admin_group_monitor" {
   },
   "inputs": [{
     "search": {
-      "indices": ["okta-logs"],
+      "indices": ["${opensearch_index.log_index.name}"],
       "query": {
         "size": 0,
         "query": {

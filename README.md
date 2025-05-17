@@ -5,7 +5,7 @@ The goal of this project is to poll Okta for audit logs and index the logs in AW
 ## Set Up
 1. Follow [the Okta documentation](https://developer.okta.com/docs/guides/create-an-api-token/main/) to create an Okta API token.
 
-1. [Download and install](https://docs.astral.sh/uv/getting-started/installation/) uv to manage Python. 
+1. [Install uv](https://docs.astral.sh/uv/getting-started/installation/) to manage Python. 
 
 1. Change to the `terraform` directory and run `terraform init` to download Terraform dependencies. (See [Hashicorp docs](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli) for information on installing Terraform.)
 
