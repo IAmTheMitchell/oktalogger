@@ -11,7 +11,7 @@ The goal of this project is to poll Okta for audit logs and index the logs in AW
 
 1. Run `terraform plan` to see the resources that will be created in AWS. Enter the variable values as prompted. (See [Hashicorp docs](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/aws-build) for connecting your local environment to AWS if necessary.)
 
-1. If everything checks out in the plan output, run `terraform apply`. Deployment may take 20+ minutes. (Note: If deployment fails with 403 HTTP forbidden error for OpenSearch resource creation, ensure that the OpenSearch cluster is fully deployed and healthy in the AWS console, then run Terraform again.)
+1. If everything checks out in the plan output, run `terraform apply`. Initial deployment may take 50+ minutes. (Note: If deployment fails with 403 HTTP forbidden error for OpenSearch resource creation, ensure that the OpenSearch cluster is fully deployed and healthy in the AWS console, then run Terraform again. The second run should go much faster.)
 
 1. Navigate to the Lambda service in the AWS console. A new Lambda function should have been created for ingesting Okta logs. The monitor page should display invocations on a set schedule. By default, the Lambda runs every 5 minutes. This can be modified via the `okta_polling_interval` Terraform variable. Optionally, the Lambda can be manually invoked from the Test tab.
 
