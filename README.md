@@ -74,7 +74,7 @@ OpenSearch is used as the SIEM platform to index, search, and alert on the Okta 
 Terraform will automatically configure a CloudWatch log group for the Lambda function. In the AWS console, navigate to the CloudWatch service, then Logs -> Log groups. The corresponding log streams will contain logs from Lambda invocations in the past 14 days. This can be helpful for troubleshooting errors.
 
 ### Running Code Locally
-`src/main.py` is designed to run both in AWS Lambda and locally on a dev machine. When running locally, set the following environment variables in your terminal:
+`src/main.py` is designed to run both in AWS Lambda and locally on a dev machine. When running locally, install any missing Python dependencies and set the following environment variables in your terminal:
 ```
 export OKTA_HOST=your_value_here
 export OKTA_API_TOKEN=your_value_here
