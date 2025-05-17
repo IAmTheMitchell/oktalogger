@@ -13,6 +13,7 @@ from opensearchpy import (
 )
 from opensearchpy.exceptions import ConnectionTimeout, TransportError
 
+# Load environment variables
 OKTA_HOST = os.environ.get("OKTA_HOST")
 OPENSEARCH_HOST = os.environ.get("OPENSEARCH_HOST")
 OS_REGION = os.environ.get("OS_REGION")
@@ -61,9 +62,8 @@ def get_aws_secret(secret_name):
 
     r = requests.get(secrets_extension_endpoint, headers=headers)
 
-    secret = json.loads(r.text)[
-        "SecretString"
-    ]  # load the Secrets Manager response into a Python dictionary, access the secret
+    # Load the Secrets Manager response into a dictionary, access the secret
+    secret = json.loads(r.text)["SecretString"]
 
     return secret
 

@@ -1,0 +1,27 @@
+flowchart LR
+  subgraph AWS_Lambda["AWS Lambda Execution"]
+    direction LR
+    Lambda[/"Lambda Function (okta_audit_logs_ingest)"/]
+    Secrets[(AWS Secrets Manager)]
+    OpenSearch[(OpenSearch Domain)]
+    OktaAPI["Okta API"]
+
+    %% ▶ invisible “ordering” links
+    Lambda --- Secrets
+    Secrets --- OpenSearch
+    OpenSearch --- OktaAPI
+
+    %% ▶ your real, visible edges
+    Lambda -- "1\. Get Okta API token"         --> Secrets
+    Secrets -- "2\. Return token"               --> Lambda
+    Lambda -- "3\. Fetch last log time"         --> OpenSearch
+    OpenSearch -- "4\. Return time"             --> Lambda
+    Lambda -- "5\. Poll logs since last published"                   --> OktaAPI
+    OktaAPI -- "6\. Return logs"                --> Lambda
+    Lambda -- "7\. Index new logs"              --> OpenSearch
+  end
+
+  %% ▶ hide the first three (invisible) edges
+  linkStyle 0 stroke-width:0px, opacity:0
+  linkStyle 1 stroke-width:0px, opacity:0
+  linkStyle 2 stroke-width:0px, opacity:0
