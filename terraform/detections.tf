@@ -2,7 +2,8 @@
 
 # Set up OpenSearch index
 resource "opensearch_index" "log_index" {
-  name = var.index_name
+  name          = var.index_name
+  force_destroy = true
 
   depends_on = [aws_opensearch_domain_policy.siem_poc_policy]
 
