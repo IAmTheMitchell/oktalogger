@@ -45,7 +45,7 @@ data "aws_iam_policy_document" "opensearch_access" {
   statement {
     sid     = "AllowLambdaIngest"
     effect  = "Allow"
-    actions = ["es:*"]
+    actions = ["es:ESHttp*"]
     principals {
       type        = "AWS"
       identifiers = [aws_iam_role.lambda_ingest.arn]
