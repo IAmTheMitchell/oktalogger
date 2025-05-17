@@ -18,15 +18,13 @@ resource "null_resource" "build_lambda" {
     command     = <<EOT
         rm -rf ${local.build_dir}
         mkdir -p ${local.build_dir}
-        uv lock
-        uv export --frozen --no-dev --no-editable -o requirements.txt
         uv pip install \
         --no-installer-metadata \
         --no-compile-bytecode \
         --python-platform x86_64-manylinux2014 \
         --python 3.13 \
         --target ${local.build_dir} \
-        -r requirements.txt
+        -r uv.lock
         cp -r ${var.lambda_src_dir}/* ${local.build_dir}/
     EOT
   }
