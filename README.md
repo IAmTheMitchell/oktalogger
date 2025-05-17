@@ -118,7 +118,7 @@ It would be better to send the logs to OpenSearch in bulk. Theoretically this is
     client.bulk(bulk_string)
 ```
 
-However, OpenSearch returns a 400 error because the bulk operation does not support nested objects. 
+However, OpenSearch returns a 400 error – Perhaps the bulk operation does not support nested objects. Further investigation is required. 
 
 ### Page Through Okta Logs
 
