@@ -13,7 +13,23 @@ The goal of this project is to poll Okta for audit logs and send them to a SIEM.
 
 5. Check the AWS console. Navigate to the OpenSearch service. Clicking the link under OpenSearch Dashboards URL (IPv4) will take you to the OpenSearch console. Log in with the master credentials. (Default user is osadmin + the password you set.) If you have auth issues, make sure you are accessing the console from the IP you set in Terraform.
 
-## Design
+## Security Detections
+
+Terraform will configure two example security detections. 
+
+### Okta - Unauthorized Admin Console Access Attempt
+
+This monitor searches for Okta logs indicating that an authenticated Okta user has attempted to access the Okta admin console and been denied. 
+
+Recommendation: Investigate recent user activity. This may be indicative of an insider threat or compromised user account attempting to elevate privileges. 
+
+### Okta - User Added to Admin Group
+
+This monitor searches for Okta logs indicating that a user was added to the "Admins" group. This example can be easily tweaked to monitor any desired groups. Ideally, the monitored group should be highly sensitive, and memberships should rarely change to avoid generating excess false positives.
+
+Recommendation: Attempt to correlate the group modification with evidence of planned activity (such as a verified change request). If none found, investigate recent activity for both users. This may be indicative of insider threat, misconfiguration, and/or privilege escalation. 
+
+## Architecture
 
 ### AWS Parameters and Secrets Lambda Extension
 The AWS Parameters and Secrets Lambda Extension was used instead of the typical boto3 client method because it supports caching. This allows for faster retrieval and lower costs by reducing the amount of calls to AWS Secrets Manager.
@@ -54,4 +70,5 @@ It would be better to send the logs to OpenSearch in bulk. Theoretically this is
 However, OpenSearch returns a 400 error. Apparently the bulk operation does not support nested objects. 
 
 ### Page Through Okta Logs
+
 By default, Okta returns 100 logs per single API call. If there are more than 100 logs per poll, data will be missed. The code should be updated to page through events until all logs in a polling period are recorded. 

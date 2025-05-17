@@ -37,5 +37,5 @@ variable "lambda_src_dir" {
 variable "okta_polling_interval" {
   type        = string
   description = "Polling interval for Okta audit logs (e.g., '5 minutes')"
-  default     = "2 minutes"
+  default     = "5 minutes"
 }

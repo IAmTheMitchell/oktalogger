@@ -89,7 +89,7 @@ resource "opensearch_role" "lambda_writer" {
   ]
 
   index_permissions {
-    index_patterns  = [var.index_name]
+    index_patterns = [var.index_name]
     allowed_actions = [
       "crud",
     ]
@@ -100,8 +100,8 @@ resource "opensearch_role" "lambda_writer" {
 
 # Map the Lambda’s IAM role to the OS security role
 resource "opensearch_roles_mapping" "lambda_writer" {
-  role_name     = opensearch_role.lambda_writer.role_name
-  description   = "Give lambda_ingest_role the lambda_writer privileges"
+  role_name   = opensearch_role.lambda_writer.role_name
+  description = "Give lambda_ingest_role the lambda_writer privileges"
 
   backend_roles = [
     aws_iam_role.lambda_ingest.arn

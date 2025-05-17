@@ -16,3 +16,93 @@ variable "index_name" {
   type        = string
   default     = "okta-logs"
 }
+
+
+# Monitor for logged in user attempting to access Okta Admin Console
+resource "opensearch_monitor" "okta_admin_console_monitor" {
+  body = <<EOF
+{
+  "name": "Okta - Unauthorized Admin Console Access Attempt",
+  "type": "monitor",
+  "enabled": true,
+  "schedule": {
+    "period": {
+      "interval": 1,
+      "unit": "MINUTES"
+    }
+  },
+  "inputs": [{
+    "search": {
+      "indices": ["${opensearch_index.log_index.name}"],
+      "query": {
+        "size": 0,
+        "query": {
+          "bool": {
+            "filter": [
+              { "term": { "eventType.keyword": "app.generic.unauth_app_access_attempt" }},
+              { "term": { "target.displayName.keyword": "Okta Admin Console" }}
+            ]
+          }
+        }
+      }
+    }
+  }],
+  "triggers": [
+    {
+      "name": "Unauthorized Admin Access Attempt Alert", 
+      "severity": "1",
+      "condition": {
+        "script": {
+          "source": "ctx.results[0].hits.total.value > 0",
+          "lang": "painless"
+        }
+      }
+    }
+  ]
+}
+EOF
+}
+
+# Monitor for user added to "Admins" group
+resource "opensearch_monitor" "okta_admin_group_monitor" {
+  body = <<EOF
+{
+  "name": "Okta - User Added to Admin Group",
+  "type": "monitor",
+  "enabled": true,
+  "schedule": {
+    "period": {
+      "interval": 1,
+      "unit": "MINUTES"
+    }
+  },
+  "inputs": [{
+    "search": {
+      "indices": ["okta-logs"],
+      "query": {
+        "size": 0,
+        "query": {
+          "bool": {
+            "filter": [
+              { "term": { "eventType.keyword": "group.user_membership.add" }},
+              { "term": { "target.displayName.keyword": "Admins" }}
+            ]
+          }
+        }
+      }
+    }
+  }],
+  "triggers": [{
+    "name": "Admins Group Alert",
+    "severity": "1",
+    "condition": {
+      "script": {
+        "source": "ctx.results[0].hits.total.value > 0",
+        "lang": "painless"
+      }
+    },
+    "actions": []
+  }]
+}
+EOF
+}
