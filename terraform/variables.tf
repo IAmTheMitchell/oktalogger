@@ -39,3 +39,9 @@ variable "okta_polling_interval" {
   description = "Polling interval for Okta audit logs (e.g., '5 minutes')"
   default     = "5 minutes"
 }
+
+variable "secret_recovery_window" {
+  type        = number
+  description = "Recovery window in days for secrets in AWS Secrets Manager"
+  default     = 0
+}

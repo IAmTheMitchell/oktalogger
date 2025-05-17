@@ -3,10 +3,12 @@
 # Create the secrets
 resource "aws_secretsmanager_secret" "os_admin_credentials" {
   name = "os_admin_credentials"
+  recovery_window_in_days = var.secret_recovery_window
 }
 
 resource "aws_secretsmanager_secret" "okta_api_token" {
   name = "okta_api_token"
+  recovery_window_in_days = var.secret_recovery_window
 }
 
 # Store OS Admin credentials
